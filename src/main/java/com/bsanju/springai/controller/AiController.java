@@ -1,23 +1,17 @@
 package com.bsanju.springai.controller;
 
+import com.bsanju.springai.model.ImageResponse;
 import com.bsanju.springai.service.ChatService;
 import com.bsanju.springai.service.ImageService;
 import com.bsanju.springai.service.RecipeService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.image.ImageResponse;
-import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;  // ✅ Correct import
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 public class AiController {
@@ -25,6 +19,7 @@ public class AiController {
     private final ChatService chatService;
     private final ImageService imageService;
     private final RecipeService recipeService;
+
     @Autowired
     public AiController(ChatService chatService, ImageService imageService, RecipeService recipeService) {
         this.chatService = chatService;
@@ -33,37 +28,35 @@ public class AiController {
     }
 
     @GetMapping("ask-ai")
-    public String getResponse(@RequestParam String prompt){
+    public String getResponse(@RequestParam String prompt) {
         return chatService.getResponse(prompt);
     }
 
     @GetMapping("ask-ai-options")
-    public String getResponseOptions(@RequestParam String prompt){
+    public String getResponseOptions(@RequestParam String prompt) {
         return chatService.getResponseOptions(prompt);
     }
 
-    /*@GetMapping("generate-image")
-    public void generateImages(HttpServletResponse response, @RequestParam String prompt) throws IOException {
-        ImageResponse imageResponse = imageService.generateImage(prompt);
-        String imageUrl = imageResponse.getResult().getOutput().getUrl();
-        response.sendRedirect(imageUrl);
-    }*/
+    @PostMapping("generate-image")
+    public ResponseEntity<?> generateImages(@RequestParam String prompt,
+                                            @RequestParam(defaultValue = "50") int steps,
+                                            @RequestParam(defaultValue = "1024") int width,
+                                            @RequestParam(defaultValue = "1024") int height) {
+        try {
+            ImageResponse imageResponse = imageService.generateImage(prompt, steps, width, height);
 
-    @GetMapping("generate-image")
-    public List<String> generateImages(HttpServletResponse response,
-                                       @RequestParam String prompt,
-                                       @RequestParam(defaultValue = "hd") String quality,
-                                       @RequestParam(defaultValue = "1") int n,
-                                       @RequestParam(defaultValue = "1024") int width,
-                                       @RequestParam(defaultValue = "1024") int height) throws IOException {
-        ImageResponse imageResponse = imageService.generateImage(prompt, quality, n, width, height);
+            if (imageResponse == null || imageResponse.getArtifacts() == null || imageResponse.getArtifacts().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Error: Image generation failed. Check API key and endpoint.");
+            }
 
-        // Streams to get urls from ImageResponse
-        List<String> imageUrls = imageResponse.getResults().stream()
-                .map(result -> result.getOutput().getUrl())
-                .toList();
-
-        return imageUrls;
+            return ResponseEntity.ok(imageResponse.getArtifacts().stream()
+                    .map(ImageResponse.Artifact::getUrl)
+                    .toList());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
     }
 
 
