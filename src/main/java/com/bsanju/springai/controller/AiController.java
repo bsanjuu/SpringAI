@@ -6,7 +6,7 @@ import com.bsanju.springai.service.ImageService;
 import com.bsanju.springai.service.RecipeService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;  // ✅ Correct import
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
